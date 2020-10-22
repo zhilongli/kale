@@ -29,20 +29,20 @@ def _get_client(host=None):
     return _client
 
 
-def list_experiments(request):
+def list_experiments(request, namespace='admin'):
     """List Kubeflow Pipelines experiments."""
     c = _get_client()
     experiments = [{"name": e.name,
                     "id": e.id}
-                   for e in c.list_experiments().experiments or []]
+                   for e in c.list_experiments(namespace=namespace).experiments or []]
     return experiments
 
 
-def get_experiment(request, experiment_name):
+def get_experiment(request, experiment_name, namespace='admin'):
     """Get a KFP experiment. If it does not exist return None."""
     client = _get_client()
     try:
-        experiment = client.get_experiment(experiment_name=experiment_name)
+        experiment = client.get_experiment(experiment_name=experiment_name, namespace=namespace)
     except ValueError as e:
         err_msg = "No experiment is found with name {}".format(experiment_name)
         if err_msg in str(e):
@@ -60,12 +60,12 @@ def get_experiment(request, experiment_name):
     return {"id": experiment.id, "name": experiment.name}
 
 
-def create_experiment(request, experiment_name, raise_if_exists=False):
+def create_experiment(request, experiment_name, namespace='admin', raise_if_exists=False):
     """Create a new experiment."""
     client = _get_client()
-    exp = get_experiment(None, experiment_name)
+    exp = get_experiment(None, experiment_name, namespace=namespace)
     if not exp:
-        experiment = client.create_experiment(name=experiment_name)
+        experiment = client.create_experiment(name=experiment_name, namespace=namespace)
         return {"id": experiment.id, "name": experiment.name}
     if raise_if_exists:
         raise ValueError("Failed to create experiment, experiment already"
@@ -118,10 +118,10 @@ def upload_pipeline(request, pipeline_package_path, pipeline_metadata,
 
 
 def run_pipeline(request, pipeline_metadata, pipeline_package_path=None,
-                 pipeline_id=None):
+                 pipeline_id=None, namespace='admin'):
     """Run a pipeline."""
     client = _get_client(pipeline_metadata.get("kfp_host", None))
-    experiment = client.create_experiment(pipeline_metadata["experiment_name"])
+    experiment = client.create_experiment(pipeline_metadata["experiment_name"], namespace=namespace)
     run_name = kfputils.generate_run_name(pipeline_metadata["pipeline_name"])
     run = client.run_pipeline(experiment.id, run_name,
                               pipeline_package_path=pipeline_package_path,
